@@ -5,11 +5,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.flink.api.common.functions.AggregateFunction;
-import org.hypertrace.core.datamodel.LatencyRecord;
 import org.hypertrace.core.datamodel.MetricTimestampRecord;
 import org.hypertrace.core.datamodel.RawSpan;
 import org.hypertrace.core.datamodel.StructuredTrace;
-import org.hypertrace.core.datamodel.TimestampRecord;
 import org.hypertrace.core.datamodel.shared.MetricTimestampNames;
 import org.hypertrace.core.datamodel.shared.trace.StructuredTraceBuilder;
 
