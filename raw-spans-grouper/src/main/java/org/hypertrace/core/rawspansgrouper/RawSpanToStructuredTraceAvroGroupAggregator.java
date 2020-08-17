@@ -12,8 +12,6 @@ import org.hypertrace.core.datamodel.StructuredTrace;
 import org.hypertrace.core.datamodel.TimestampRecord;
 import org.hypertrace.core.datamodel.shared.DataFlowMetrics;
 import org.hypertrace.core.datamodel.shared.trace.StructuredTraceBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class RawSpanToStructuredTraceAvroGroupAggregator implements
     AggregateFunction<RawSpan, List<RawSpan>, StructuredTrace> {
@@ -22,7 +20,8 @@ public class RawSpanToStructuredTraceAvroGroupAggregator implements
   private final String TIME_SAMPLING_PERCENTAGE = "timestamp.sampling.percent";
 
   public RawSpanToStructuredTraceAvroGroupAggregator(Config config) {
-    if (config.getDouble(TIME_SAMPLING_PERCENTAGE) > 0 && config.getDouble(TIME_SAMPLING_PERCENTAGE) <= 100) {
+    if (config.hasPath(TIME_SAMPLING_PERCENTAGE)
+        && config.getDouble(TIME_SAMPLING_PERCENTAGE) > 0 && config.getDouble(TIME_SAMPLING_PERCENTAGE) <= 100) {
       this.creationTimeSamplingPercent = config.getDouble(TIME_SAMPLING_PERCENTAGE);
     }
   }

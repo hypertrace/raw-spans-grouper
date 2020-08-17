@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
+import com.typesafe.config.Config;
 import java.util.List;
 import org.hypertrace.core.datamodel.RawSpan;
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,8 @@ import org.junit.jupiter.api.Test;
 public class RawSpanToStructuredTraceGroupAggregatorTest {
   @Test
   public void testRawSpanToStructuredTraceGroupAggregatorSimpleMethods() {
-    RawSpanToStructuredTraceAvroGroupAggregator aggregator = new RawSpanToStructuredTraceAvroGroupAggregator();
+    RawSpanToStructuredTraceAvroGroupAggregator aggregator =
+        new RawSpanToStructuredTraceAvroGroupAggregator(mock(Config.class));
     List<RawSpan> rawSpanList = aggregator.createAccumulator();
     assertNotNull(rawSpanList);
     assertTrue(rawSpanList.isEmpty());
