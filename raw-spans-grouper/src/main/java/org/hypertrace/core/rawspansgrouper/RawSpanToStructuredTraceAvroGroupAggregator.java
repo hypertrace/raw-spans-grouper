@@ -22,7 +22,7 @@ public class RawSpanToStructuredTraceAvroGroupAggregator implements
   private final String TIME_SAMPLING_PERCENTAGE = "timestamp.sampling.percent";
 
   public RawSpanToStructuredTraceAvroGroupAggregator(Config config) {
-    if (config.getInt(TIME_SAMPLING_PERCENTAGE) > 0 && config.getInt(TIME_SAMPLING_PERCENTAGE) <= 100) {
+    if (config.getDouble(TIME_SAMPLING_PERCENTAGE) > 0 && config.getDouble(TIME_SAMPLING_PERCENTAGE) <= 100) {
       this.creationTimeSamplingPercent = config.getDouble(TIME_SAMPLING_PERCENTAGE);
     }
   }
