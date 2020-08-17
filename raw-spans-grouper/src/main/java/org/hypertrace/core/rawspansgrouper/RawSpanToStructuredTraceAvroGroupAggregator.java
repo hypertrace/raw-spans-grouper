@@ -3,16 +3,29 @@ package org.hypertrace.core.rawspansgrouper;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.typesafe.config.Config;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.flink.api.common.functions.AggregateFunction;
-import org.hypertrace.core.datamodel.MetricTimestampRecord;
 import org.hypertrace.core.datamodel.RawSpan;
 import org.hypertrace.core.datamodel.StructuredTrace;
-import org.hypertrace.core.datamodel.shared.MetricTimestampNames;
+import org.hypertrace.core.datamodel.TimestampRecord;
+import org.hypertrace.core.datamodel.shared.DataFlowMetrics;
 import org.hypertrace.core.datamodel.shared.trace.StructuredTraceBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RawSpanToStructuredTraceAvroGroupAggregator implements
     AggregateFunction<RawSpan, List<RawSpan>, StructuredTrace> {
+
+  private double creationTimeSamplingPercent = -1;
+  private final String TIME_SAMPLING_PERCENTAGE = "timestamp.sampling.percent";
+
+  public RawSpanToStructuredTraceAvroGroupAggregator(Config config) {
+    if (config.getInt(TIME_SAMPLING_PERCENTAGE) > 0 && config.getInt(TIME_SAMPLING_PERCENTAGE) <= 100) {
+      this.creationTimeSamplingPercent = config.getDouble(TIME_SAMPLING_PERCENTAGE);
+    }
+  }
 
   @Override
   public List<RawSpan> createAccumulator() {
@@ -41,9 +54,12 @@ public class RawSpanToStructuredTraceAvroGroupAggregator implements
       rawSpanList.add((RawSpan) r);
     }
 
-    MetricTimestampRecord timestampRecord = new MetricTimestampRecord();
-    timestampRecord.setMetricName(MetricTimestampNames.CREATION_TIME.name());
-    timestampRecord.setTimestamp(System.currentTimeMillis());
+    TimestampRecord timestampRecord = null;
+    if (Math.random()*100 <= creationTimeSamplingPercent) {
+      timestampRecord = new TimestampRecord();
+      timestampRecord.setName(DataFlowMetrics.CREATION_TIME.toString());
+      timestampRecord.setTimestamp(System.currentTimeMillis());
+    }
 
     return StructuredTraceBuilder
         .buildStructuredTraceFromRawSpans(rawSpanList, traceId, customerId, timestampRecord);

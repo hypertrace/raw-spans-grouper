@@ -57,8 +57,10 @@ public class RawSpanToStructuredTraceGroupingJob implements PlatformBackgroundJo
 
   private final Map<String, String> metricsConfig;
   private StreamExecutionEnvironment environment;
+  private Config configs;
 
   RawSpanToStructuredTraceGroupingJob(Config configs) {
+    this.configs = configs;
     this.spanType = configs.getString(SPAN_TYPE_CONFIG);
 
     Config jobConfig = configs.getConfig(FLINK_JOB);
@@ -132,7 +134,7 @@ public class RawSpanToStructuredTraceGroupingJob implements PlatformBackgroundJo
   private AggregateFunction getTraceGroupAggregateFunction(String spanType) {
     switch (spanType) {
       case "rawSpan":
-        return new RawSpanToStructuredTraceAvroGroupAggregator();
+        return new RawSpanToStructuredTraceAvroGroupAggregator(configs);
       default:
         throw new UnsupportedOperationException("Cannot recognize span type: " + spanType);
     }
