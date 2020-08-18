@@ -19,13 +19,13 @@ import org.junit.jupiter.api.Test;
 
 public class RawSpanToStructuredTraceGroupAggregatorTest {
 
-  private final String TIMESTAMP_SAMPLING_PERCENT = "timestamp.sampling.percent";
+  private final String DATAFLOW_SAMPLING_PERCENT = "dataflow.metriccollection.sampling.percent";
 
   @Test
   public void testRawSpanToStructuredTraceGroupAggregatorSimpleMethods() {
     Config config = mock(Config.class);
-    when(config.hasPath(TIMESTAMP_SAMPLING_PERCENT)).thenReturn(true);
-    when(config.getDouble(TIMESTAMP_SAMPLING_PERCENT)).thenReturn(100.0);
+    when(config.hasPath(DATAFLOW_SAMPLING_PERCENT)).thenReturn(true);
+    when(config.getDouble(DATAFLOW_SAMPLING_PERCENT)).thenReturn(100.0);
     RawSpanToStructuredTraceAvroGroupAggregator aggregator =
         new RawSpanToStructuredTraceAvroGroupAggregator(config);
     List<RawSpan> rawSpanList = aggregator.createAccumulator();

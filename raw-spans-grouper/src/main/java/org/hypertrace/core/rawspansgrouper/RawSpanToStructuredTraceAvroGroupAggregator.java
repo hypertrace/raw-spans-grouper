@@ -16,13 +16,13 @@ import org.hypertrace.core.datamodel.shared.trace.StructuredTraceBuilder;
 public class RawSpanToStructuredTraceAvroGroupAggregator implements
     AggregateFunction<RawSpan, List<RawSpan>, StructuredTrace> {
 
-  private double timestampSamplingPercent = -1;
-  private final String TIMESTAMP_SAMPLING_PERCENT = "timestamp.sampling.percent";
+  private double dataflowSamplingPercent = -1;
+  private final String DATAFLOW_SAMPLING_PERCENT = "dataflow.metriccollection.sampling.percent";
 
   public RawSpanToStructuredTraceAvroGroupAggregator(Config config) {
-    if (config.hasPath(TIMESTAMP_SAMPLING_PERCENT)
-        && config.getDouble(TIMESTAMP_SAMPLING_PERCENT) > 0 && config.getDouble(TIMESTAMP_SAMPLING_PERCENT) <= 100) {
-      this.timestampSamplingPercent = config.getDouble(TIMESTAMP_SAMPLING_PERCENT);
+    if (config.hasPath(DATAFLOW_SAMPLING_PERCENT)
+        && config.getDouble(DATAFLOW_SAMPLING_PERCENT) > 0 && config.getDouble(DATAFLOW_SAMPLING_PERCENT) <= 100) {
+      this.dataflowSamplingPercent = config.getDouble(DATAFLOW_SAMPLING_PERCENT);
     }
   }
 
@@ -54,7 +54,7 @@ public class RawSpanToStructuredTraceAvroGroupAggregator implements
     }
 
     TimestampRecord timestampRecord = null;
-    if (Math.random()*100 <= timestampSamplingPercent) {
+    if (Math.random()*100 <= dataflowSamplingPercent) {
       timestampRecord = new TimestampRecord();
       timestampRecord.setName(DataflowMetric.CREATION_TIME.toString());
       timestampRecord.setTimestamp(System.currentTimeMillis());
