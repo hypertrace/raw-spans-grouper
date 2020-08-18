@@ -12,7 +12,6 @@ import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupi
 import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupingJob.JobConfig.SPAN_TYPE_CONFIG;
 import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupingJob.JobConfig.TOPIC_NAME_CONFIG;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.typesafe.config.Config;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import java.util.Map;
@@ -125,7 +124,6 @@ public class RawSpanToStructuredTraceGroupingJob implements PlatformBackgroundJo
   public void stop() {
   }
 
-  @VisibleForTesting
   StreamExecutionEnvironment getExecutionEnvironment() {
     return environment;
   }
