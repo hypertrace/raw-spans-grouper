@@ -15,6 +15,7 @@ import java.util.List;
 
 import org.hypertrace.core.datamodel.Event;
 import org.hypertrace.core.datamodel.RawSpan;
+import org.hypertrace.core.datamodel.StructuredTrace;
 import org.junit.jupiter.api.Test;
 
 public class RawSpanToStructuredTraceGroupAggregatorTest {
@@ -61,6 +62,7 @@ public class RawSpanToStructuredTraceGroupAggregatorTest {
     when(rawSpan1.getCustomerId()).thenReturn("abc123");
     when(event.getEventId()).thenReturn(buffer);
     when(rawSpan1.getEvent()).thenReturn(event);
-    aggregator.getResult(List.of(rawSpan1));
+    StructuredTrace trace = aggregator.getResult(List.of(rawSpan1));
+    assertEquals("abc123", trace.getCustomerId());
   }
 }
