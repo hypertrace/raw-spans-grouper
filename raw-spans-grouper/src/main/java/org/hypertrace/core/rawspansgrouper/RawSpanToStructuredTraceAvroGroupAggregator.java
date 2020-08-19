@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
 import com.typesafe.config.Config;
 import io.micrometer.core.instrument.Timer;
 import org.apache.avro.generic.IndexedRecord;
@@ -27,6 +26,7 @@ public class RawSpanToStructuredTraceAvroGroupAggregator implements
   private static final String SPAN_GROUPER_ARRIVAL_LAG = "rawspangrouper.arrival.lag";
   private static final Timer spanGrouperArrivalTimer =
       PlatformMetricsRegistry.registerTimer(SPAN_GROUPER_ARRIVAL_LAG, new HashMap<>());
+
 
   public RawSpanToStructuredTraceAvroGroupAggregator(Config config) {
     if (config.hasPath(DATAFLOW_SAMPLING_PERCENT)
