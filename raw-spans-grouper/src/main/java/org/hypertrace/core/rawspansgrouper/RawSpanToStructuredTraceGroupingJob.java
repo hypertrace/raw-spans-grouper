@@ -29,7 +29,6 @@ import org.hypertrace.core.kafkastreams.framework.KafkaStreamsApp;
 import org.hypertrace.core.kafkastreams.framework.serdes.SchemaRegistryBasedAvroSerde;
 import org.hypertrace.core.kafkastreams.framework.timestampextractors.UseWallclockTimeOnInvalidTimestamp;
 import org.hypertrace.core.rawspansgrouper.keyvaluemappers.RawSpansHolderToStructuredTraceMapper;
-import org.hypertrace.core.rawspansgrouper.keyvaluemappers.TraceIdKeyValueMapper;
 import org.hypertrace.core.serviceframework.config.ConfigUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
