@@ -1,182 +1,130 @@
 package org.hypertrace.core.rawspansgrouper;
 
-import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupingJob.JobConfig.FLINK_JOB;
-import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupingJob.JobConfig.FLINK_SINK_CONFIG_PATH;
-import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupingJob.JobConfig.FLINK_SOURCE_CONFIG_PATH;
-import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupingJob.JobConfig.KAFKA_CONFIG_PATH;
-import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupingJob.JobConfig.LOG_FAILURES_CONFIG;
-import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupingJob.JobConfig.METRICS;
-import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupingJob.JobConfig.PARALLELISM;
-import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupingJob.JobConfig.SCHEMA_REGISTRY_CONFIG_PATH;
-import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupingJob.JobConfig.SPAN_GROUPBY_SESSION_WINDOW_INTERVAL_CONFIG;
-import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupingJob.JobConfig.SPAN_TYPE_CONFIG;
-import static org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceGroupingJob.JobConfig.TOPIC_NAME_CONFIG;
+import static org.hypertrace.core.rawspansgrouper.RawSpanGrouperConstants.INPUT_TOPIC_CONFIG_KEY;
+import static org.hypertrace.core.rawspansgrouper.RawSpanGrouperConstants.JOB_CONFIG;
+import static org.hypertrace.core.rawspansgrouper.RawSpanGrouperConstants.KAFKA_STREAMS_CONFIG_KEY;
+import static org.hypertrace.core.rawspansgrouper.RawSpanGrouperConstants.OUTPUT_TOPIC_CONFIG_KEY;
+import static org.hypertrace.core.rawspansgrouper.RawSpanGrouperConstants.SCHEMA_REGISTRY_CONFIG_KEY;
+import static org.hypertrace.core.rawspansgrouper.RawSpanGrouperConstants.SPAN_GROUPBY_SESSION_WINDOW_INTERVAL_CONFIG_KEY;
+import static org.hypertrace.core.rawspansgrouper.RawSpanGrouperConstants.SPAN_TYPE_CONFIG_KEY;
 
 import com.typesafe.config.Config;
-import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
-import org.apache.flink.api.common.functions.AggregateFunction;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.api.java.functions.KeySelector;
-import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.streaming.api.TimeCharacteristic;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.windowing.assigners.ProcessingTimeSessionWindows;
-import org.apache.flink.streaming.api.windowing.time.Time;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.errors.LogAndContinueExceptionHandler;
+import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.Grouped;
+import org.apache.kafka.streams.kstream.Materialized;
+import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.kstream.Suppressed;
+import org.apache.kafka.streams.kstream.Suppressed.BufferConfig;
+import org.apache.kafka.streams.kstream.TimeWindows;
 import org.hypertrace.core.datamodel.RawSpan;
 import org.hypertrace.core.datamodel.StructuredTrace;
-import org.hypertrace.core.flinkutils.avro.RegistryBasedAvroSerde;
-import org.hypertrace.core.flinkutils.utils.FlinkUtils;
-import org.hypertrace.core.serviceframework.background.PlatformBackgroundJob;
+import org.hypertrace.core.kafkastreams.framework.KafkaStreamsApp;
+import org.hypertrace.core.kafkastreams.framework.serdes.SchemaRegistryBasedAvroSerde;
+import org.hypertrace.core.kafkastreams.framework.timestampextractors.UseWallclockTimeOnInvalidTimestamp;
+import org.hypertrace.core.rawspansgrouper.keyvaluemappers.RawSpansHolderToStructuredTraceMapper;
+import org.hypertrace.core.rawspansgrouper.keyvaluemappers.TraceIdKeyValueMapper;
 import org.hypertrace.core.serviceframework.config.ConfigUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RawSpanToStructuredTraceGroupingJob implements PlatformBackgroundJob {
+public class RawSpanToStructuredTraceGroupingJob extends KafkaStreamsApp {
 
-  private static final Logger LOGGER = LoggerFactory
+  private static final Logger logger = LoggerFactory
       .getLogger(RawSpanToStructuredTraceGroupingJob.class);
 
-  private final String spanType;
-  private final String inputTopic;
-  private final String outputTopic;
-  private final Properties kafkaConsumerConfig;
-  private final Properties kafkaProducerConfig;
-  private final Map<String, String> sourceSchemaRegistryConfig;
-  private final Map<String, String> sinkSchemaRegistryConfig;
-  private final boolean logFailuresOnly;
+  private Map<String, String> schemaRegistryConfig;
 
-  private AggregateFunction aggregateFunction;
-  private int groupbySessionWindowInterval;
-
-  private final Map<String, String> metricsConfig;
-  private StreamExecutionEnvironment environment;
-  private Config configs;
-
-  RawSpanToStructuredTraceGroupingJob(Config configs) {
-    this.configs = configs;
-    this.spanType = configs.getString(SPAN_TYPE_CONFIG);
-
-    Config jobConfig = configs.getConfig(FLINK_JOB);
-    metricsConfig = ConfigUtils.getFlatMapConfig(jobConfig, METRICS);
-
-    Config flinkSourceConfig = configs.getConfig(FLINK_SOURCE_CONFIG_PATH);
-    this.inputTopic = flinkSourceConfig.getString(TOPIC_NAME_CONFIG);
-    this.kafkaConsumerConfig = ConfigUtils
-        .getPropertiesConfig(flinkSourceConfig, KAFKA_CONFIG_PATH);
-    this.sourceSchemaRegistryConfig = ConfigUtils
-        .getFlatMapConfig(flinkSourceConfig, SCHEMA_REGISTRY_CONFIG_PATH);
-
-    Config flinkSinkConfig = configs.getConfig(FLINK_SINK_CONFIG_PATH);
-    this.outputTopic = flinkSinkConfig.getString(TOPIC_NAME_CONFIG);
-    this.logFailuresOnly = flinkSinkConfig.getBoolean(LOG_FAILURES_CONFIG);
-    this.kafkaProducerConfig = ConfigUtils.getPropertiesConfig(flinkSinkConfig, KAFKA_CONFIG_PATH);
-    this.sinkSchemaRegistryConfig = ConfigUtils
-        .getFlatMapConfig(flinkSinkConfig, SCHEMA_REGISTRY_CONFIG_PATH);
-
-    this.groupbySessionWindowInterval = configs.getInt(SPAN_GROUPBY_SESSION_WINDOW_INTERVAL_CONFIG);
-    this.aggregateFunction = getTraceGroupAggregateFunction(spanType);
-    environment = FlinkUtils.getExecutionEnvironment(metricsConfig);
-
-    if (jobConfig.hasPath(PARALLELISM)) {
-      int parallelism = jobConfig.getInt(PARALLELISM);
-      environment.setParallelism(parallelism);
-    }
+  protected RawSpanToStructuredTraceGroupingJob(Config jobConfig) {
+    super(jobConfig);
   }
 
   @Override
-  public void run() throws Exception {
-    environment.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-    environment.getConfig()
-        .addDefaultKryoSerializer(Class.forName("java.util.Collections$UnmodifiableCollection"),
-            UnmodifiableCollectionsSerializer.class);
-    environment.getConfig().enableForceKryo();
+  protected StreamsBuilder buildTopology(Properties properties, StreamsBuilder streamsBuilder) {
+    SchemaRegistryBasedAvroSerde<RawSpan> rawSpanSerde = new SchemaRegistryBasedAvroSerde<>(
+        RawSpan.class);
+    rawSpanSerde.configure(schemaRegistryConfig, false);
 
-    DeserializationSchema<RawSpan> deserializationSchema = new RegistryBasedAvroSerde<>(inputTopic,
-        RawSpan.class, sourceSchemaRegistryConfig
-    );
-    FlinkKafkaConsumer<?> spanKafkaConsumer =
-        FlinkUtils.createKafkaConsumer(inputTopic, deserializationSchema, kafkaConsumerConfig);
+    SchemaRegistryBasedAvroSerde<StructuredTrace> structuredTraceSerde = new SchemaRegistryBasedAvroSerde<>(
+        StructuredTrace.class);
+    structuredTraceSerde.configure(schemaRegistryConfig, false);
 
-    DataStream<?> inputStream = environment.addSource(spanKafkaConsumer);
+    SchemaRegistryBasedAvroSerde<RawSpansHolder> rawSpansHolderSerde = new SchemaRegistryBasedAvroSerde<>(
+        RawSpansHolder.class);
+    rawSpansHolderSerde.configure(schemaRegistryConfig, false);
 
-    final SingleOutputStreamOperator<SerializationSchema> outputStream = inputStream
-        .keyBy(getSpanKeySelector(this.spanType))
-        .window(ProcessingTimeSessionWindows.withGap(Time.seconds(groupbySessionWindowInterval)))
-        .aggregate(aggregateFunction);
-    SerializationSchema<StructuredTrace> serializationSchema = new RegistryBasedAvroSerde<>(
-        outputTopic, StructuredTrace.class, sinkSchemaRegistryConfig);
-    outputStream.addSink(
-        FlinkUtils
-            .getFlinkKafkaProducer(outputTopic, serializationSchema,
-                null/* By specifying null this will default to kafka producer's default partitioner i.e. round-robin*/,
-                kafkaProducerConfig,
-                logFailuresOnly));
-    environment.execute("raw-spans-grouper");
+    String inputTopic = properties.getProperty(INPUT_TOPIC_CONFIG_KEY);
+    String outputTopic = properties.getProperty(OUTPUT_TOPIC_CONFIG_KEY);
+    int groupbySessionWindowInterval = (Integer) properties
+        .get(SPAN_GROUPBY_SESSION_WINDOW_INTERVAL_CONFIG_KEY);
+
+    streamsBuilder
+        // read the input topic
+        .stream(inputTopic,
+            Consumed.with(Serdes.String(), Serdes.serdeFrom(rawSpanSerde, rawSpanSerde)))
+        // group by trace_id
+        // currently this results in a repartition topic - ideally we want to avoid this
+        .groupBy(new TraceIdKeyValueMapper(),
+            Grouped.with(Serdes.String(), Serdes.serdeFrom(rawSpanSerde, rawSpanSerde)))
+        // aggregate for 'groupbySessionWindowInterval' secs
+        // note that if the grace period is not added then by default it is 24 hrs !
+        .windowedBy(TimeWindows.of(Duration.ofSeconds(groupbySessionWindowInterval))
+            .grace(Duration.ofMillis(200)))
+        // aggregate
+        .aggregate(RawSpansHolder.newBuilder()::build,
+            new RawSpanToStructuredTraceAvroGroupAggregator(),
+            Materialized
+                .with(Serdes.String(), Serdes.serdeFrom(rawSpansHolderSerde, rawSpansHolderSerde)))
+        // the preceding operation creates a KTable and each aggregate operation generates a new record i.e the current aggregate
+        // we only care about the final aggregate when the 'groupbySessionWindowInterval' is done. To achieve that
+        // we need to suppress the updates
+        .suppress(Suppressed.untilTimeLimit(Duration.ofSeconds(groupbySessionWindowInterval),
+            BufferConfig.unbounded()))
+        //.suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))  [todo - not sure why this isn't working]
+        // convert the window aggregated objects (RawSpansHolder) to a stream
+        .toStream()
+        // convert RawSpansHolder to StructuredTrace
+        .map(new RawSpansHolderToStructuredTraceMapper())
+        // write to the output topic
+        .to(outputTopic,
+            Produced.with(Serdes.String(),
+                Serdes.serdeFrom(structuredTraceSerde, structuredTraceSerde)));
+
+    return streamsBuilder;
   }
 
   @Override
-  public void stop() {
+  protected Properties getStreamsConfig(Config config) {
+    Properties properties = new Properties();
+
+    schemaRegistryConfig = ConfigUtils.getFlatMapConfig(config, SCHEMA_REGISTRY_CONFIG_KEY);
+    properties.putAll(schemaRegistryConfig);
+
+    properties.put(SPAN_TYPE_CONFIG_KEY, config.getString(SPAN_TYPE_CONFIG_KEY));
+    properties.put(INPUT_TOPIC_CONFIG_KEY, config.getString(INPUT_TOPIC_CONFIG_KEY));
+    properties.put(OUTPUT_TOPIC_CONFIG_KEY, config.getString(OUTPUT_TOPIC_CONFIG_KEY));
+    properties.putAll(ConfigUtils.getFlatMapConfig(config, KAFKA_STREAMS_CONFIG_KEY));
+    properties.put(SPAN_GROUPBY_SESSION_WINDOW_INTERVAL_CONFIG_KEY,
+        config.getInt(SPAN_GROUPBY_SESSION_WINDOW_INTERVAL_CONFIG_KEY));
+
+    properties.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG,
+        UseWallclockTimeOnInvalidTimestamp.class);
+    properties.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
+        LogAndContinueExceptionHandler.class);
+
+    properties.put(JOB_CONFIG, config);
+
+    return properties;
   }
 
-  StreamExecutionEnvironment getExecutionEnvironment() {
-    return environment;
-  }
-
-
-  private AggregateFunction getTraceGroupAggregateFunction(String spanType) {
-    switch (spanType) {
-      case "rawSpan":
-        return new RawSpanToStructuredTraceAvroGroupAggregator(configs);
-      default:
-        throw new UnsupportedOperationException("Cannot recognize span type: " + spanType);
-    }
-  }
-
-  private KeySelector getSpanKeySelector(String spanType) {
-    switch (spanType) {
-      case "rawSpan":
-        return getRawSpanAvroKeySelector();
-      default:
-        throw new UnsupportedOperationException("Cannot recognize span type: " + spanType);
-    }
-  }
-
-  /**
-   * A note about this method. Due to how lax we are with generic typing for Flink stream objects
-   * initialization, this methods needs to be static. Otherwise, it throws NPE on a class
-   * initialization. We should clean up all the wildcard generic types that we use in the background
-   * job classes.
-   */
-  private static KeySelector getRawSpanAvroKeySelector() {
-    return new KeySelector<RawSpan, Tuple2<String, String>>() {
-      @Override
-      public Tuple2<String, String> getKey(RawSpan value) {
-        return new Tuple2<String, String>(value.getCustomerId(),
-            new String(value.getTraceId().array()));
-      }
-    };
-  }
-
-  static class JobConfig {
-
-    public static String SPAN_TYPE_CONFIG = "span.type";
-
-    public static final String FLINK_SOURCE_CONFIG_PATH = "flink.source";
-    public static final String FLINK_SINK_CONFIG_PATH = "flink.sink";
-    public static final String TOPIC_NAME_CONFIG = "topic";
-    public static final String KAFKA_CONFIG_PATH = "kafka";
-    public static final String SCHEMA_REGISTRY_CONFIG_PATH = "schema.registry";
-    public static final String LOG_FAILURES_CONFIG = "log.failures.only";
-
-    public static final String SPAN_GROUPBY_SESSION_WINDOW_INTERVAL_CONFIG = "span.groupby.session.window.interval";
-    public static final String FLINK_JOB = "flink.job";
-    public static final String METRICS = "metrics";
-    public static final String PARALLELISM = "parallelism";
+  @Override
+  protected Logger getLogger() {
+    return logger;
   }
 }

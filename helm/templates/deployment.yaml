@@ -32,7 +32,6 @@ spec:
       {{- end }}
     spec:
     {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
       {{- toYaml . | nindent 8 }}
     {{- end }}
       volumes:
@@ -48,8 +47,10 @@ spec:
     {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          #image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+          image: traceableai-docker-dev.jfrog.io/hypertrace/raw-spans-grouper:0.1.14-SNAPSHOT
+          #imagePullPolicy: {{ .Values.image.pullPolicy }}
+          imagePullPolicy: Always
           ports:
             - name: admin-port
               containerPort: {{ .Values.containerAdminPort }}

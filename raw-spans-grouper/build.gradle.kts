@@ -1,9 +1,19 @@
 plugins {
+  `java-library`
   application
   jacoco
   id("org.hypertrace.docker-java-application-plugin") version "0.5.1"
   id("org.hypertrace.docker-publish-plugin") version "0.5.1"
   id("org.hypertrace.jacoco-report-plugin")
+  id("org.hypertrace.avro-plugin")
+}
+
+val avdlDependency by configurations.creating {
+  setTransitive(false)
+}
+
+configurations.api{
+  extendsFrom(avdlDependency)
 }
 
 repositories {
@@ -33,11 +43,44 @@ tasks.test {
   useJUnitPlatform()
 }
 
+tasks.register<Copy>("gatherSourceAvdlFilesForCompatibilityCheck"){
+  from("src/main/avro/util/")
+  from({
+    zipTree(avdlDependency.singleFile)
+
+  }){
+    include("**/*.avdl")
+  }
+  into(file("$buildDir/tmp-source-avdl/raw-spans-grouper/"))
+}
+
+tasks.create<Copy>("gatherAgainstAvdlFilesForCompatibilityCheck") {
+  from(tasks.getByName<org.hypertrace.gradle.avro.CheckAvroCompatibility>("avroCompatibilityCheck").againstFiles) {
+    eachFile {
+      relativePath = RelativePath(true, *relativePath.segments.drop(1).toTypedArray())
+    }
+  }
+  from({
+    zipTree(avdlDependency.singleFile)
+  }) {
+    include("**/*.avdl")
+  }
+  into("$buildDir/tmp-against-avdl/raw-spans-grouper")
+}
+
+//tasks.named<org.hypertrace.gradle.avro.CheckAvroCompatibility>("avroCompatibilityCheck") {
+//  setSource(tasks.getByName("gatherSourceAvdlFilesForCompatibilityCheck").outputs)
+//  setAgainstFiles(tasks.getByName("gatherAgainstAvdlFilesForCompatibilityCheck").outputs)
+//}
+
+
 dependencies {
+  avdlDependency("org.hypertrace.core.datamodel:data-model:0.1.4")
   implementation("org.hypertrace.core.datamodel:data-model:0.1.4")
   implementation("org.hypertrace.core.flinkutils:flink-utils:0.1.6")
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.9")
   implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.9")
+  implementation("org.hypertrace.core.kafkastreams.framework:kafka-streams-framework:0.1.0-SNAPSHOT")
 
   implementation("com.typesafe:config:1.4.0")
   implementation("de.javakaffee:kryo-serializers:0.45")

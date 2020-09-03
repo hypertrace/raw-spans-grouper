@@ -68,25 +68,19 @@ deploymentSelectorMatchLabels:
 ###########
 rawSpansGrouperConfig:
   name: raw-spans-grouper-config
+  kafka:
+    streams:
+      config:
+        metricsRecordingLevel: INFO
+        numStreamThreads: 2
+        bootstrapServers: "bootstrap:9092"
+  schema:
+    registry:
+      config:
+        schemaRegistryUrl: "http://schema-registry-service:8081"
   span:
     groupby:
       internal: 30
-  flink:
-    source:
-      kafka:
-        bootstrapServers: "bootstrap:9092"
-      schema:
-        registry:
-          url: "http://schema-registry-service:8081"
-    sink:
-      kafka:
-        bootstrapServers: "bootstrap:9092"
-        lingerMs: 0
-        batchSize: 16384
-        compressionType: none
-      schema:
-        registry:
-          url: "http://schema-registry-service:8081"
 
 logConfig:
   name: raw-spans-grouper-log-config
