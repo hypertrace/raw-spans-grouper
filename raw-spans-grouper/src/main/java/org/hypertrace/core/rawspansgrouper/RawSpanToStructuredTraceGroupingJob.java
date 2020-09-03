@@ -70,8 +70,9 @@ public class RawSpanToStructuredTraceGroupingJob extends KafkaStreamsApp {
             Consumed.with(Serdes.String(), Serdes.serdeFrom(rawSpanSerde, rawSpanSerde)))
         // group by trace_id
         // currently this results in a repartition topic - ideally we want to avoid this
-        .groupBy(new TraceIdKeyValueMapper(),
-            Grouped.with(Serdes.String(), Serdes.serdeFrom(rawSpanSerde, rawSpanSerde)))
+//        .groupBy(new TraceIdKeyValueMapper(),
+//            Grouped.with(Serdes.String(), Serdes.serdeFrom(rawSpanSerde, rawSpanSerde)))
+        .groupByKey(Grouped.with(Serdes.String(), Serdes.serdeFrom(rawSpanSerde, rawSpanSerde)))
         // aggregate for 'groupbySessionWindowInterval' secs
         // note that if the grace period is not added then by default it is 24 hrs !
         .windowedBy(TimeWindows.of(Duration.ofSeconds(groupbySessionWindowInterval))
