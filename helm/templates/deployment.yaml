@@ -49,8 +49,7 @@ spec:
         - name: {{ .Chart.Name }}
           #image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
           image: traceableai-docker-dev.jfrog.io/hypertrace/raw-spans-grouper:0.1.14-SNAPSHOT
-          #imagePullPolicy: {{ .Values.image.pullPolicy }}
-          imagePullPolicy: Always
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: admin-port
               containerPort: {{ .Values.containerAdminPort }}
