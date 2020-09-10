@@ -12,16 +12,16 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.KeyValueMapper;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.hypertrace.core.datamodel.RawSpan;
+import org.hypertrace.core.datamodel.RawSpans;
 import org.hypertrace.core.datamodel.StructuredTrace;
 import org.hypertrace.core.datamodel.TimestampRecord;
 import org.hypertrace.core.datamodel.Timestamps;
 import org.hypertrace.core.datamodel.shared.DataflowMetricUtils;
 import org.hypertrace.core.datamodel.shared.trace.StructuredTraceBuilder;
-import org.hypertrace.core.rawspansgrouper.RawSpansHolder;
 import org.hypertrace.core.serviceframework.metrics.PlatformMetricsRegistry;
 
 public class RawSpansHolderToStructuredTraceMapper implements
-    KeyValueMapper<Windowed<String>, RawSpansHolder, KeyValue<String, StructuredTrace>> {
+    KeyValueMapper<Windowed<String>, RawSpans, KeyValue<String, StructuredTrace>> {
 
   double dataflowSamplingPercent = -1;
   private final String DATAFLOW_SAMPLING_PERCENT = "dataflow.metriccollection.sampling.percent";
@@ -32,7 +32,7 @@ public class RawSpansHolderToStructuredTraceMapper implements
 
   @Override
   public KeyValue<String, StructuredTrace> apply(Windowed<String> key,
-      RawSpansHolder accumulator) {
+      RawSpans accumulator) {
 
     // These raw spans are by Customer ID and Trace ID.
     // So the raw spans will belong to the same customer and trace

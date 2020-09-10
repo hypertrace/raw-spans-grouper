@@ -17,7 +17,7 @@ image:
   repository: hypertrace/raw-spans-grouper
   pullPolicy: Always
 
-imagePullSecrets: []
+imagePullSecrets: [name: regcred-dev]
 
 nodeLabels: {}
 

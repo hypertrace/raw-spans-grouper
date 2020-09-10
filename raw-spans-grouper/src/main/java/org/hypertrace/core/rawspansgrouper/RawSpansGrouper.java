@@ -25,6 +25,7 @@ import org.apache.kafka.streams.kstream.Suppressed;
 import org.apache.kafka.streams.kstream.Suppressed.BufferConfig;
 import org.apache.kafka.streams.kstream.TimeWindows;
 import org.hypertrace.core.datamodel.RawSpan;
+import org.hypertrace.core.datamodel.RawSpans;
 import org.hypertrace.core.datamodel.StructuredTrace;
 import org.hypertrace.core.kafkastreams.framework.KafkaStreamsApp;
 import org.hypertrace.core.kafkastreams.framework.serdes.SchemaRegistryBasedAvroSerde;
@@ -47,7 +48,8 @@ public class RawSpansGrouper extends KafkaStreamsApp {
   }
 
   @Override
-  public StreamsBuilder buildTopology(Properties properties, StreamsBuilder streamsBuilder, Map<String, KStream<?,?>> inputStreams) {
+  public StreamsBuilder buildTopology(Properties properties, StreamsBuilder streamsBuilder,
+      Map<String, KStream<?, ?>> inputStreams) {
     SchemaRegistryBasedAvroSerde<RawSpan> rawSpanSerde = new SchemaRegistryBasedAvroSerde<>(
         RawSpan.class);
     rawSpanSerde.configure(schemaRegistryConfig, false);
@@ -56,8 +58,8 @@ public class RawSpansGrouper extends KafkaStreamsApp {
         StructuredTrace.class);
     structuredTraceSerde.configure(schemaRegistryConfig, false);
 
-    SchemaRegistryBasedAvroSerde<RawSpansHolder> rawSpansHolderSerde = new SchemaRegistryBasedAvroSerde<>(
-        RawSpansHolder.class);
+    SchemaRegistryBasedAvroSerde<RawSpans> rawSpansHolderSerde = new SchemaRegistryBasedAvroSerde<>(
+        RawSpans.class);
     rawSpansHolderSerde.configure(schemaRegistryConfig, false);
 
     String inputTopic = properties.getProperty(INPUT_TOPIC_CONFIG_KEY);
@@ -66,7 +68,7 @@ public class RawSpansGrouper extends KafkaStreamsApp {
         .get(SPAN_GROUPBY_SESSION_WINDOW_INTERVAL_CONFIG_KEY);
 
     KStream<String, RawSpan> inputStream = (KStream<String, RawSpan>) inputStreams.get(inputTopic);
-    if(inputStream == null){
+    if (inputStream == null) {
 
       inputStream = streamsBuilder
           // read the input topic
@@ -86,7 +88,7 @@ public class RawSpansGrouper extends KafkaStreamsApp {
         .windowedBy(TimeWindows.of(Duration.ofSeconds(groupbySessionWindowInterval))
             .grace(Duration.ofMillis(200)))
         // aggregate
-        .aggregate(RawSpansHolder.newBuilder()::build,
+        .aggregate(RawSpans.newBuilder()::build,
             new RawSpanToStructuredTraceAvroGroupAggregator(),
             Materialized
                 .with(Serdes.String(), Serdes.serdeFrom(rawSpansHolderSerde, rawSpansHolderSerde)))

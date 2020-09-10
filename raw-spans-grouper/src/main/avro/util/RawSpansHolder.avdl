@@ -1,7 +1,0 @@
-@namespace("org.hypertrace.core.rawspansgrouper")
-protocol RawSpansHolderProtocol {
-  import idl "RawSpan.avdl";
-  record RawSpansHolder{
-    array<org.hypertrace.core.datamodel.RawSpan> raw_spans = [];
-  }
-}

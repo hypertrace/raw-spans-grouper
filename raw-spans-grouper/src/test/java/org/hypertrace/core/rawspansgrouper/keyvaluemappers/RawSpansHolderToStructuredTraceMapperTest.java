@@ -12,10 +12,10 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.hypertrace.core.datamodel.Event;
 import org.hypertrace.core.datamodel.RawSpan;
+import org.hypertrace.core.datamodel.RawSpans;
 import org.hypertrace.core.datamodel.StructuredTrace;
 import org.hypertrace.core.datamodel.shared.DataflowMetricUtils;
 import org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceAvroGroupAggregator;
-import org.hypertrace.core.rawspansgrouper.RawSpansHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +31,7 @@ class RawSpansHolderToStructuredTraceMapperTest {
   @Test
   public void whenRawSpansAreAggregatedVerifyThatTheStructuredTraceHasThem() {
     RawSpan rawSpan1 = mock(RawSpan.class);
-    RawSpansHolder rawSpansHolder = RawSpansHolder.newBuilder().build();
+    RawSpans rawSpansHolder = RawSpans.newBuilder().build();
     RawSpanToStructuredTraceAvroGroupAggregator aggregator =
         new RawSpanToStructuredTraceAvroGroupAggregator();
     aggregator.apply(null, rawSpan1, rawSpansHolder);
