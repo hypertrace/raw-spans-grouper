@@ -1,6 +1,6 @@
 package org.hypertrace.core.rawspansgrouper.keyvaluemappers;
 
-import static org.hypertrace.core.rawspansgrouper.keyvaluemappers.RawSpansHolderToStructuredTraceMapper.TRACE_CREATION_TIME;
+import static org.hypertrace.core.rawspansgrouper.keyvaluemappers.RawSpansToStructuredTraceMapper.TRACE_CREATION_TIME;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -19,13 +19,13 @@ import org.hypertrace.core.rawspansgrouper.RawSpanToStructuredTraceAvroGroupAggr
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class RawSpansHolderToStructuredTraceMapperTest {
+class RawSpansToStructuredTraceMapperTest {
 
-  private RawSpansHolderToStructuredTraceMapper underTest;
+  private RawSpansToStructuredTraceMapper underTest;
 
   @BeforeEach
   public void setUp() {
-    underTest = new RawSpansHolderToStructuredTraceMapper();
+    underTest = new RawSpansToStructuredTraceMapper();
   }
 
   @Test

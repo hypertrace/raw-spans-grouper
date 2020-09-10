@@ -30,7 +30,7 @@ import org.hypertrace.core.datamodel.StructuredTrace;
 import org.hypertrace.core.kafkastreams.framework.KafkaStreamsApp;
 import org.hypertrace.core.kafkastreams.framework.serdes.SchemaRegistryBasedAvroSerde;
 import org.hypertrace.core.kafkastreams.framework.timestampextractors.UseWallclockTimeOnInvalidTimestamp;
-import org.hypertrace.core.rawspansgrouper.keyvaluemappers.RawSpansHolderToStructuredTraceMapper;
+import org.hypertrace.core.rawspansgrouper.keyvaluemappers.RawSpansToStructuredTraceMapper;
 import org.hypertrace.core.serviceframework.config.ConfigClient;
 import org.hypertrace.core.serviceframework.config.ConfigUtils;
 import org.slf4j.Logger;
@@ -58,9 +58,9 @@ public class RawSpansGrouper extends KafkaStreamsApp {
         StructuredTrace.class);
     structuredTraceSerde.configure(schemaRegistryConfig, false);
 
-    SchemaRegistryBasedAvroSerde<RawSpans> rawSpansHolderSerde = new SchemaRegistryBasedAvroSerde<>(
+    SchemaRegistryBasedAvroSerde<RawSpans> rawSpansSerde = new SchemaRegistryBasedAvroSerde<>(
         RawSpans.class);
-    rawSpansHolderSerde.configure(schemaRegistryConfig, false);
+    rawSpansSerde.configure(schemaRegistryConfig, false);
 
     String inputTopic = properties.getProperty(INPUT_TOPIC_CONFIG_KEY);
     String outputTopic = properties.getProperty(OUTPUT_TOPIC_CONFIG_KEY);
@@ -91,17 +91,17 @@ public class RawSpansGrouper extends KafkaStreamsApp {
         .aggregate(RawSpans.newBuilder()::build,
             new RawSpanToStructuredTraceAvroGroupAggregator(),
             Materialized
-                .with(Serdes.String(), Serdes.serdeFrom(rawSpansHolderSerde, rawSpansHolderSerde)))
+                .with(Serdes.String(), Serdes.serdeFrom(rawSpansSerde, rawSpansSerde)))
         // the preceding operation creates a KTable and each aggregate operation generates a new record i.e the current aggregate
         // we only care about the final aggregate when the 'groupbySessionWindowInterval' is done. To achieve that
         // we need to suppress the updates
         .suppress(Suppressed.untilTimeLimit(Duration.ofSeconds(groupbySessionWindowInterval),
             BufferConfig.unbounded()))
         //.suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))  [todo - not sure why this isn't working]
-        // convert the window aggregated objects (RawSpansHolder) to a stream
+        // convert the window aggregated objects (RawSpans) to a stream
         .toStream()
-        // convert RawSpansHolder to StructuredTrace
-        .map(new RawSpansHolderToStructuredTraceMapper())
+        // convert RawSpans to StructuredTrace
+        .map(new RawSpansToStructuredTraceMapper())
         // write to the output topic
         .to(outputTopic,
             Produced.with(Serdes.String(),

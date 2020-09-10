@@ -20,7 +20,7 @@ import org.hypertrace.core.datamodel.shared.DataflowMetricUtils;
 import org.hypertrace.core.datamodel.shared.trace.StructuredTraceBuilder;
 import org.hypertrace.core.serviceframework.metrics.PlatformMetricsRegistry;
 
-public class RawSpansHolderToStructuredTraceMapper implements
+public class RawSpansToStructuredTraceMapper implements
     KeyValueMapper<Windowed<String>, RawSpans, KeyValue<String, StructuredTrace>> {
 
   double dataflowSamplingPercent = -1;
