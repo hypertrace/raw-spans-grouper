@@ -10,6 +10,8 @@ import static org.hypertrace.core.rawspansgrouper.RawSpanGrouperConstants.SPAN_T
 
 import com.typesafe.config.Config;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import org.apache.kafka.common.serialization.Serdes;
@@ -129,6 +131,10 @@ public class RawSpansGrouper extends KafkaStreamsApp {
     properties.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
         LogAndContinueExceptionHandler.class);
 
+    if (config.hasPath(PRE_CREATE_TOPICS)) {
+      properties.put(PRE_CREATE_TOPICS, config.getString(PRE_CREATE_TOPICS));
+    }
+    
     properties.put(JOB_CONFIG, config);
 
     return properties;
@@ -137,5 +143,15 @@ public class RawSpansGrouper extends KafkaStreamsApp {
   @Override
   public Logger getLogger() {
     return logger;
+  }
+
+  @Override
+  public List<String> getInputTopics(Properties properties) {
+    return Arrays.asList(properties.getProperty(INPUT_TOPIC_CONFIG_KEY));
+  }
+
+  @Override
+  public List<String> getOutputTopics(Properties properties) {
+    return Arrays.asList(properties.getProperty(OUTPUT_TOPIC_CONFIG_KEY));
   }
 }
