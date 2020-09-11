@@ -10,6 +10,9 @@ import static org.hypertrace.core.rawspansgrouper.RawSpanGrouperConstants.SPAN_T
 
 import com.typesafe.config.Config;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import org.apache.kafka.common.serialization.Serdes;
@@ -48,7 +51,7 @@ public class RawSpansGrouper extends KafkaStreamsApp {
   }
 
   @Override
-  public StreamsBuilder buildTopology(Properties properties, StreamsBuilder streamsBuilder,
+  public StreamsBuilder buildTopology(Map<String, Object> streamsProperties, StreamsBuilder streamsBuilder,
       Map<String, KStream<?, ?>> inputStreams) {
     SchemaRegistryBasedAvroSerde<RawSpan> rawSpanSerde = new SchemaRegistryBasedAvroSerde<>(
         RawSpan.class);
@@ -62,10 +65,9 @@ public class RawSpansGrouper extends KafkaStreamsApp {
         RawSpans.class);
     rawSpansSerde.configure(schemaRegistryConfig, false);
 
-    String inputTopic = properties.getProperty(INPUT_TOPIC_CONFIG_KEY);
-    String outputTopic = properties.getProperty(OUTPUT_TOPIC_CONFIG_KEY);
-    int groupbySessionWindowInterval = (Integer) properties
-        .get(SPAN_GROUPBY_SESSION_WINDOW_INTERVAL_CONFIG_KEY);
+    String inputTopic = getAppConfig().getString(INPUT_TOPIC_CONFIG_KEY);
+    String outputTopic = getAppConfig().getString(OUTPUT_TOPIC_CONFIG_KEY);
+    int groupbySessionWindowInterval = getAppConfig().getInt(SPAN_GROUPBY_SESSION_WINDOW_INTERVAL_CONFIG_KEY);
 
     KStream<String, RawSpan> inputStream = (KStream<String, RawSpan>) inputStreams.get(inputTopic);
     if (inputStream == null) {
@@ -111,31 +113,27 @@ public class RawSpansGrouper extends KafkaStreamsApp {
   }
 
   @Override
-  public Properties getStreamsConfig(Config config) {
-    Properties properties = new Properties();
+  public Map<String, Object> getStreamsConfig(Config jobConfig) {
+    Map<String, Object> streamsConfig = new HashMap<>(
+        ConfigUtils.getFlatMapConfig(jobConfig, KAFKA_STREAMS_CONFIG_KEY));
 
-    schemaRegistryConfig = ConfigUtils.getFlatMapConfig(config, SCHEMA_REGISTRY_CONFIG_KEY);
-    properties.putAll(schemaRegistryConfig);
+    schemaRegistryConfig = ConfigUtils.getFlatMapConfig(jobConfig, SCHEMA_REGISTRY_CONFIG_KEY);
 
-    properties.put(SPAN_TYPE_CONFIG_KEY, config.getString(SPAN_TYPE_CONFIG_KEY));
-    properties.put(INPUT_TOPIC_CONFIG_KEY, config.getString(INPUT_TOPIC_CONFIG_KEY));
-    properties.put(OUTPUT_TOPIC_CONFIG_KEY, config.getString(OUTPUT_TOPIC_CONFIG_KEY));
-    properties.putAll(ConfigUtils.getFlatMapConfig(config, KAFKA_STREAMS_CONFIG_KEY));
-    properties.put(SPAN_GROUPBY_SESSION_WINDOW_INTERVAL_CONFIG_KEY,
-        config.getInt(SPAN_GROUPBY_SESSION_WINDOW_INTERVAL_CONFIG_KEY));
-
-    properties.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG,
-        UseWallclockTimeOnInvalidTimestamp.class);
-    properties.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
-        LogAndContinueExceptionHandler.class);
-
-    properties.put(JOB_CONFIG, config);
-
-    return properties;
+    return streamsConfig;
   }
 
   @Override
   public Logger getLogger() {
     return logger;
+  }
+
+  @Override
+  public List<String> getInputTopics() {
+    return Arrays.asList(getAppConfig().getString(INPUT_TOPIC_CONFIG_KEY));
+  }
+
+  @Override
+  public List<String> getOutputTopics() {
+    return Arrays.asList(getAppConfig().getString(OUTPUT_TOPIC_CONFIG_KEY));
   }
 }
