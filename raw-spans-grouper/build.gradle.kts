@@ -39,7 +39,7 @@ dependencies {
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.9")
   implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.9")
 
-  implementation("org.hypertrace.core.kafkastreams.framework:kafka-streams-framework:0.1.5-SNAPSHOT")
+  implementation("org.hypertrace.core.kafkastreams.framework:kafka-streams-framework:0.1.4")
   implementation("com.typesafe:config:1.4.0")
   implementation("de.javakaffee:kryo-serializers:0.45")
   implementation("org.apache.flink:flink-avro:1.7.0")

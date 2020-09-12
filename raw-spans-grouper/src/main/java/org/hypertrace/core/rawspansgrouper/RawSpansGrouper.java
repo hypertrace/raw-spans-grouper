@@ -22,9 +22,7 @@ import org.apache.kafka.streams.kstream.Suppressed.BufferConfig;
 import org.apache.kafka.streams.kstream.TimeWindows;
 import org.hypertrace.core.datamodel.RawSpan;
 import org.hypertrace.core.datamodel.RawSpans;
-import org.hypertrace.core.datamodel.StructuredTrace;
 import org.hypertrace.core.kafkastreams.framework.KafkaStreamsApp;
-import org.hypertrace.core.kafkastreams.framework.serdes.SchemaRegistryBasedAvroSerde;
 import org.hypertrace.core.rawspansgrouper.keyvaluemappers.RawSpansToStructuredTraceMapper;
 import org.hypertrace.core.serviceframework.config.ConfigClient;
 import org.hypertrace.core.serviceframework.config.ConfigUtils;
@@ -43,18 +41,6 @@ public class RawSpansGrouper extends KafkaStreamsApp {
   @Override
   public StreamsBuilder buildTopology(Map<String, Object> properties, StreamsBuilder streamsBuilder,
       Map<String, KStream<?, ?>> inputStreams) {
-    SchemaRegistryBasedAvroSerde<RawSpan> rawSpanSerde = new SchemaRegistryBasedAvroSerde<>(
-        RawSpan.class);
-    rawSpanSerde.configure(properties, false);
-
-    SchemaRegistryBasedAvroSerde<StructuredTrace> structuredTraceSerde = new SchemaRegistryBasedAvroSerde<>(
-        StructuredTrace.class);
-    structuredTraceSerde.configure(properties, false);
-
-    SchemaRegistryBasedAvroSerde<RawSpans> rawSpansSerde = new SchemaRegistryBasedAvroSerde<>(
-        RawSpans.class);
-    rawSpansSerde.configure(properties, false);
-
     String inputTopic = getAppConfig().getString(INPUT_TOPIC_CONFIG_KEY);
     String outputTopic = getAppConfig().getString(OUTPUT_TOPIC_CONFIG_KEY);
     int groupbySessionWindowInterval = getAppConfig()
@@ -62,11 +48,9 @@ public class RawSpansGrouper extends KafkaStreamsApp {
 
     KStream<String, RawSpan> inputStream = (KStream<String, RawSpan>) inputStreams.get(inputTopic);
     if (inputStream == null) {
-
       inputStream = streamsBuilder
           // read the input topic
-          .stream(inputTopic,
-              Consumed.with(Serdes.String(), Serdes.serdeFrom(rawSpanSerde, rawSpanSerde)));
+          .stream(inputTopic, Consumed.with(Serdes.String(), null));
       inputStreams.put(inputTopic, inputStream);
     }
 
@@ -75,7 +59,7 @@ public class RawSpansGrouper extends KafkaStreamsApp {
         // currently this results in a repartition topic - ideally we want to avoid this
 //        .groupBy(new TraceIdKeyValueMapper(),
 //            Grouped.with(Serdes.String(), Serdes.serdeFrom(rawSpanSerde, rawSpanSerde)))
-        .groupByKey(Grouped.with(Serdes.String(), Serdes.serdeFrom(rawSpanSerde, rawSpanSerde)))
+        .groupByKey(Grouped.with(Serdes.String(), null))
         // aggregate for 'groupbySessionWindowInterval' secs
         // note that if the grace period is not added then by default it is 24 hrs !
         .windowedBy(TimeWindows.of(Duration.ofSeconds(groupbySessionWindowInterval))
@@ -83,8 +67,7 @@ public class RawSpansGrouper extends KafkaStreamsApp {
         // aggregate
         .aggregate(RawSpans.newBuilder()::build,
             new RawSpanToStructuredTraceAvroGroupAggregator(),
-            Materialized
-                .with(Serdes.String(), Serdes.serdeFrom(rawSpansSerde, rawSpansSerde)))
+            Materialized.with(Serdes.String(), null))
         // the preceding operation creates a KTable and each aggregate operation generates a new record i.e the current aggregate
         // we only care about the final aggregate when the 'groupbySessionWindowInterval' is done. To achieve that
         // we need to suppress the updates
@@ -96,9 +79,7 @@ public class RawSpansGrouper extends KafkaStreamsApp {
         // convert RawSpans to StructuredTrace
         .map(new RawSpansToStructuredTraceMapper())
         // write to the output topic
-        .to(outputTopic,
-            Produced.with(Serdes.String(),
-                Serdes.serdeFrom(structuredTraceSerde, structuredTraceSerde)));
+        .to(outputTopic, Produced.with(Serdes.String(), null));
 
     return streamsBuilder;
   }
