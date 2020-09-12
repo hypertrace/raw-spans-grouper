@@ -34,11 +34,11 @@ tasks.test {
 }
 
 dependencies {
-  implementation("org.hypertrace.core.datamodel:data-model:0.1.7-SNAPSHOT")
+  implementation("org.hypertrace.core.datamodel:data-model:0.1.7")
   implementation("org.hypertrace.core.flinkutils:flink-utils:0.1.6")
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.9")
   implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.9")
-  implementation("org.hypertrace.core.kafkastreams.framework:kafka-streams-framework:0.1.1-SNAPSHOT")
+  implementation("org.hypertrace.core.kafkastreams.framework:kafka-streams-framework:0.1.5-SNAPSHOT")
 
   implementation("com.typesafe:config:1.4.0")
   implementation("de.javakaffee:kryo-serializers:0.45")
