@@ -57,8 +57,7 @@ public class RawSpansGrouper extends KafkaStreamsApp {
 
     String inputTopic = getAppConfig().getString(INPUT_TOPIC_CONFIG_KEY);
     String outputTopic = getAppConfig().getString(OUTPUT_TOPIC_CONFIG_KEY);
-
-    int groupbySessionWindowInterval = (Integer) getAppConfig()
+    int groupbySessionWindowInterval = getAppConfig()
         .getInt(SPAN_GROUPBY_SESSION_WINDOW_INTERVAL_CONFIG_KEY);
 
     KStream<String, RawSpan> inputStream = (KStream<String, RawSpan>) inputStreams.get(inputTopic);
@@ -116,11 +115,9 @@ public class RawSpansGrouper extends KafkaStreamsApp {
     return logger;
   }
 
-
   public List<String> getInputTopics() {
     return List.of(getAppConfig().getString(INPUT_TOPIC_CONFIG_KEY));
   }
-
 
   public List<String> getOutputTopics() {
     return List.of(getAppConfig().getString(OUTPUT_TOPIC_CONFIG_KEY));
