@@ -148,25 +148,25 @@ workflows:
           context:
             - hypertrace-vulnerability-scanning
             - dockerhub-read
-      - publish:
-          context:
-            - hypertrace-publishing
-            - dockerhub-read
-          requires:
-            - build
-            - validate-charts
-            - snyk-scan
-          filters:
-            branches:
-              only:
-                - main
-      - package-charts:
-          context:
-            - hypertrace-publishing
-            - dockerhub-read
-          requires:
-            - publish
-          filters:
-            branches:
-              only:
-                - main
+#      - publish:
+#          context:
+#            - hypertrace-publishing
+#            - dockerhub-read
+#          requires:
+#            - build
+#            - validate-charts
+#            - snyk-scan
+#          filters:
+#            branches:
+#              only:
+#                - main
+#      - package-charts:
+#          context:
+#            - hypertrace-publishing
+#            - dockerhub-read
+#          requires:
+#            - publish
+#          filters:
+#            branches:
+#              only:
+#                - main
